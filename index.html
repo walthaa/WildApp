@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Wildbeobachtung</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--bg:#e7ecec;--surf:#f7f9f9;--ink:#15262b;--mut:#5a6d72;--line:#c5d0d1;--acc:#1d6a86;--acc-ink:#fff;--warn:#a23b2a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10191c;--surf:#18262a;--ink:#e6eeee;--mut:#93a8ad;--line:#2c4046;--acc:#5fb3d0;--acc-ink:#07181d;--warn:#e58c7c}}
+:root[data-theme="dark"]{--bg:#10191c;--surf:#18262a;--ink:#e6eeee;--mut:#93a8ad;--line:#2c4046;--acc:#5fb3d0;--acc-ink:#07181d;--warn:#e58c7c}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.4 "Atkinson Hyperlegible",system-ui,sans-serif}
+main{max-width:560px;margin:0 auto;padding:12px 14px calc(var(--badge) + 90px)}
+h1{font-size:1.35rem;margin:6px 0 10px}h2{font-size:1.05rem;margin:20px 0 8px}
+nav{position:fixed;z-index:2000;left:0;right:0;bottom:0;display:flex;background:var(--surf);border-top:1px solid var(--line);padding-bottom:max(var(--badge),env(safe-area-inset-bottom,0px))}
+nav a{flex:1;text-align:center;padding:16px 2px;color:var(--mut);text-decoration:none;font-weight:700;font-size:.8rem}
+nav a.on{color:var(--acc);box-shadow:inset 0 3px 0 var(--acc)}
+label{display:block;font-size:.9rem;color:var(--mut);margin:12px 0 4px}
+input,select,textarea,button{font:inherit;color:var(--ink)}
+input,select,textarea{width:100%;min-height:52px;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--surf)}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.btn{min-height:52px;padding:10px 16px;border:0;border-radius:8px;background:var(--acc);color:var(--acc-ink);font-weight:700;width:100%;margin-top:14px}
+.btn.alt{background:transparent;color:var(--acc);border:1.5px solid var(--acc);margin-top:8px}
+.map{height:270px;border-radius:8px;border:1.5px solid var(--line)}#map2{height:68vh}
+.pin{background:var(--acc);border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #15262b}
+.grid{display:grid;grid-template-columns:84px repeat(3,1fr);gap:6px;align-items:center}
+.grid .h{text-align:center;font-size:.85rem;color:var(--mut)}
+.st{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:8px;background:var(--surf);overflow:hidden}
+.st button{width:36px;min-height:48px;border:0;background:transparent;font-size:1.3rem;font-weight:700;color:var(--acc)}
+.st output{flex:1;text-align:center;font-weight:700}
+.tot{margin-top:10px;font-weight:700}
+.row{background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.row b{font-size:1.05rem}.row small{color:var(--mut);display:block}
+.row button{float:right;border:0;background:none;color:var(--warn);min-height:40px;padding:0 4px}
+.th{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.th img{width:72px;height:72px;object-fit:cover;border-radius:6px}.th img.big{width:100%;height:auto}
+table{width:100%;border-collapse:collapse;background:var(--surf);border:1px solid var(--line)}
+td,th{padding:8px;border-bottom:1px solid var(--line);text-align:right}td:first-child,th:first-child{text-align:left}
+.wrap{overflow-x:auto}
+.bar{display:flex;align-items:flex-end;gap:4px;height:90px}.bar div{flex:1;background:var(--acc);min-height:2px;border-radius:3px 3px 0 0}
+.mo{display:flex;gap:4px;font-size:.7rem;color:var(--mut)}.mo span{flex:1;text-align:center}
+.msg{color:var(--mut);min-height:1.4em;margin-top:6px}.empty{color:var(--mut);padding:16px 0}
+textarea{min-height:110px;font-size:.8rem}.dr{display:flex;gap:8px;margin-top:8px}.dr input{min-width:0}
+.mk{position:relative;width:34px;height:34px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 0 1.5px #15262b,0 2px 5px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1}
+.mk.ev{border-radius:8px}.mk span{filter:brightness(0) invert(1)}
+.mk b{position:absolute;right:-8px;top:-9px;background:#fff;color:#15262b;border-radius:9px;min-width:18px;height:18px;font:700 .7rem/18px sans-serif;text-align:center;box-shadow:0 0 0 1px #15262b}
+input[type=search]{-webkit-appearance:none;appearance:none}
+.clr{width:52px;min-height:52px;flex:none;border:1.5px solid var(--line);border-radius:8px;background:var(--surf);color:var(--mut);font-size:1.1rem}
+.zc .st button{min-height:60px}
+#lbox{position:fixed;top:0;left:0;right:0;bottom:0;z-index:3000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center}
+#lbox img{max-width:100%;max-height:100%;object-fit:contain}
+#lbox button{position:absolute;background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:50%;width:52px;height:52px;font-size:1.6rem}
+#lbx{top:calc(12px + env(safe-area-inset-top,0px));right:12px}#lbp{left:8px;top:50%;margin-top:-26px}#lbn{right:8px;top:50%;margin-top:-26px}
+.leaflet-popup-content .th{margin-top:6px}.leaflet-popup-content .th img{width:64px;height:64px}
+/* Platz unten für das Netlify-Badge; bei anderem Hoster auf 0px setzen */
+:root{--badge:60px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<div id="bkbanner" class="row" hidden></div>
+<section id="v-erfassen">
+<h1>Erfassen</h1>
+<div id="editbar" class="row" hidden><b>Eintrag wird bearbeitet</b><small>Änderungen speichern oder abbrechen.</small><button type="button" id="editcancel" style="float:none;color:var(--acc);padding:0;margin-top:6px">Abbrechen</button></div>
+<div id="modebar" style="display:flex;gap:8px"><button class="btn" id="bmode" type="button" style="margin:0">Beobachtung</button><button class="btn alt" id="emode" type="button" style="margin:0">Feststellung</button></div>
+<label for="art" id="artlbl">Tierart</label><select id="art"></select>
+<input id="artneu" list="artlist" autocomplete="off" placeholder="Tierart eintragen, z. B. Buntspecht" aria-label="Neue Tierart" style="margin-top:8px" hidden><datalist id="artlist"></datalist>
+<label for="zeit" id="zlbl">Datum und Uhrzeit</label><input id="zeit" type="datetime-local">
+<div id="blk-bis" hidden><label for="bis">Bis (Ende des Zeitraums, optional, z. B. bei einer Fotofalle)</label><input id="bis" type="date"></div>
+<label for="region">Region</label>
+<input id="region" list="regs" autocomplete="off" placeholder="z. B. Val Fex"><datalist id="regs"></datalist>
+<label>Standort: auf die Karte tippen oder Pin ziehen</label>
+<div id="map1" class="map"></div>
+<button class="btn alt" id="gps" type="button">Meinen Standort übernehmen</button>
+<div class="msg" id="gpsmsg"></div>
+<label for="koord">Koordinaten eingeben (WGS84 oder LV95/LV03)</label>
+<div class="dr" style="margin-top:0"><input id="koord" autocomplete="off" placeholder="46.3512, 9.6234 oder 2'761'000 / 1'138'000"><button class="btn" id="kgo" type="button" style="width:auto;margin:0;padding:0 20px">OK</button></div>
+<div id="blk-tier"><h2>Anzahl nach Alter und Geschlecht</h2>
+<div class="grid" id="matrix"></div>
+<div class="tot" id="tot"></div>
+<label for="alt">Genaues Alter in Jahren (optional)</label>
+<input id="alt" autocomplete="off" placeholder="z. B. 8 oder bei mehreren: 6, 7, 9"></div>
+<label for="note">Bemerkung</label><textarea id="note" style="min-height:80px"></textarea>
+<label for="fotos">Fotos</label>
+<input id="fotos" type="file" accept="image/*" multiple>
+<div class="th" id="thumbs"></div>
+<button class="btn" id="save" type="button">Speichern</button>
+<div class="msg" id="smsg" role="status"></div>
+</section>
+
+<section id="v-karte" hidden>
+<h1>Karte</h1>
+<select id="ka" aria-label="Tierart oder Feststellung"></select>
+<input type="search" id="ks" placeholder="Suche: Name, Bemerkung, Region" aria-label="Suche" style="margin-top:8px">
+<div class="dr"><input type="date" id="kv" aria-label="Von"><input type="date" id="kb" aria-label="Bis"><button type="button" class="clr" data-a="kv,kb" aria-label="Zeitraum löschen">✕</button></div>
+<div class="msg" id="kcount"></div>
+<div id="map2" class="map"></div>
+</section>
+
+<section id="v-liste" hidden>
+<h1>Beobachtungen</h1>
+<select id="fa" aria-label="Tierart oder Feststellung filtern"></select>
+<input type="search" id="ls" placeholder="Suche: Name, Bemerkung, Region" aria-label="Suche" style="margin-top:8px">
+<div class="dr"><input type="date" id="lv" aria-label="Von"><input type="date" id="lb" aria-label="Bis"><button type="button" class="clr" data-a="lv,lb" aria-label="Zeitraum löschen">✕</button></div>
+<div style="height:8px"></div>
+<select id="fr" aria-label="Region filtern"></select>
+<h2 id="lcount"></h2><div id="list"></div>
+</section>
+
+<section id="v-zaehlung" hidden>
+<h1>Wildzählung</h1>
+<div id="z-setup">
+<label for="zart">Tierart</label><input id="zart" list="zarten" value="Gämse" autocomplete="off"><datalist id="zarten"></datalist>
+<label for="zort">Ort / Tal</label><input id="zort" list="regs" autocomplete="off" placeholder="z. B. Val Fex">
+<label for="zdat">Datum der Zählung</label><input id="zdat" type="date">
+<button class="btn" id="zstart" type="button">Zählung starten</button>
+<div class="msg" id="zmsg"></div>
+<h2>Bisherige Zählungen</h2><div id="zlist"></div>
+</div>
+<div id="z-run" hidden>
+<div class="row" id="zhead"></div>
+<div class="grid zc" id="zmatrix"></div>
+<div class="tot" id="ztot"></div>
+<h2>Zwischenstand</h2><div class="wrap" id="zsum"></div>
+<label for="znote">Bemerkung</label><input id="znote" autocomplete="off">
+<button class="btn" id="zend" type="button">Zählung beenden und auswerten</button>
+<button class="btn alt" id="zcancel" type="button">Zählung abbrechen</button>
+</div>
+<div id="z-res" hidden>
+<div id="zresbox"></div>
+<button class="btn" id="zcopy" type="button">Ergebnis kopieren</button>
+<button class="btn alt" id="zback" type="button">Zurück zur Übersicht</button>
+<div class="msg" id="zcm"></div>
+</div>
+</section>
+
+<section id="v-auswertung" hidden>
+<h1>Auswertung</h1>
+<select id="sa" aria-label="Tierart"></select>
+<div style="height:8px"></div>
+<select id="sy" aria-label="Jahr"></select>
+<div style="height:8px"></div>
+<select id="sm" aria-label="Monat"><option value="">Alle Monate</option><option value="01">Januar</option><option value="02">Februar</option><option value="03">März</option><option value="04">April</option><option value="05">Mai</option><option value="06">Juni</option><option value="07">Juli</option><option value="08">August</option><option value="09">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Dezember</option></select>
+<div class="dr"><input type="date" id="sv" aria-label="Von"><input type="date" id="sb" aria-label="Bis"><button type="button" class="clr" data-a="sv,sb" aria-label="Zeitraum löschen">✕</button></div>
+<div class="msg">Ist „Von/Bis“ ausgefüllt, ersetzt es Jahr und Monat.</div>
+<h2>Pro Monat</h2><div class="bar" id="bars"></div><div class="mo" id="mo"></div>
+<h2>Pro Region</h2><div class="wrap" id="byreg"></div>
+<h2>Alter und Geschlecht</h2><div class="wrap" id="byas"></div>
+<h2>Sicherung</h2>
+<div class="msg" id="bkinfo"></div>
+<button class="btn" id="bk" type="button">Sicherung erstellen (mit Fotos)</button>
+<button class="btn" id="bkshare" type="button" hidden>Teilen / speichern</button>
+<label for="rs">Sicherung wiederherstellen</label>
+<input id="rs" type="file" accept=".json,application/json">
+<div class="msg" id="cmsg" role="status"></div>
+<h2>CSV für Excel</h2>
+<textarea id="csv" readonly aria-label="CSV"></textarea>
+<button class="btn alt" id="cp" type="button">CSV kopieren</button>
+</section>
+</main>
+<div id="lbox" hidden><button id="lbx" type="button" aria-label="Schliessen">✕</button><button id="lbp" type="button" aria-label="Vorheriges Foto">‹</button><img id="lbi" alt="Foto"><button id="lbn" type="button" aria-label="Nächstes Foto">›</button></div>
+<nav>
+<a href="#erfassen" data-v="erfassen">Erfassen</a>
+<a href="#karte" data-v="karte">Karte</a>
+<a href="#liste" data-v="liste">Liste</a>
+<a href="#zaehlung" data-v="zaehlung">Zählung</a>
+<a href="#auswertung" data-v="auswertung">Auswertung</a>
+</nav>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+var ARTEN=["Rothirsch","Gämse","Reh","Steinbock","Wolf","Luchs","Rotfuchs","Birkhuhn","Auerhuhn","Schneehuhn","Bartgeier","Steinadler","Uhu","Feldhase","Schneehase","Murmeltier"];
+var EVENTS=["See gefroren","See aufgetaut","Erster Schnee","Fuchsbau gefunden","Steinadlerhorst","Bartgeierhorst","Jagdposten","Salzlecke","Suhle","Wechsel","Fotofalle"];
+var STY={"Rothirsch":["#7b4a2a","🦌"],"Gämse":["#f59f00","🐐"],"Reh":["#2f9e44","🦌"],"Steinbock":["#7048e8","🐐"],"Wolf":["#e03131","🐺"],"Luchs":["#0c8599","🐈"],"Rotfuchs":["#d9480f","🦊"],"Fuchs":["#d9480f","🦊"],"Birkhuhn":["#343a40","🐓"],"Auerhuhn":["#5f3dc4","🐓"],"Schneehuhn":["#868e96","🐓"],"Uhu":["#a8721b","🦉"],"Vogel":["#2b8a3e","🐦"],"Bartgeier":["#c2255c","🦅"],"Steinadler":["#1971c2","🦅"],"See gefroren":["#22b8cf","🧊"],"See aufgetaut":["#1864ab","🌊"],"Erster Schnee":["#4dabf7","❄️"],"Fuchsbau gefunden":["#a0522d","🕳️"],"Steinadlerhorst":["#1864ab","🪺"],"Bartgeierhorst":["#c2255c","🪺"],"Jagdposten":["#5c940d","🛖"],"Salzlecke":["#e8590c","🧂"],"Suhle":["#6f4e37","💧"],"Wechsel":["#0b7285","🐾"],"Fotofalle":["#9c36b5","📷"]};
+/* Stichworte: erkennt selbst eingetippte Feststellungen (Kleinschreibung, Teilwort genügt) */
+var KEYS=[["posten","Jagdposten"],["hochsitz","Jagdposten"],["ansitz","Jagdposten"],["hütte","Jagdposten"],["huette","Jagdposten"],["kanzel","Jagdposten"],["horst","Steinadlerhorst"],["salz","Salzlecke"],["lecke","Salzlecke"],["suhl","Suhle"],["sohle","Suhle"],["wechsel","Wechsel"],["fotofalle","Fotofalle"],["kamera","Fotofalle"],["bau","Fuchsbau gefunden"],["aufgetaut","See aufgetaut"],["auftau","See aufgetaut"],["eisfrei","See aufgetaut"],["eisgang","See aufgetaut"],["gefroren","See gefroren"],["zugefroren","See gefroren"],["eis","See gefroren"],["see","See gefroren"],["schnee","Erster Schnee"]];
+var NOEV=["Wechsel"];
+var VOGEL=["specht","meise","geier","adler","huhn","hahn","eule","kauz","fink","drossel","amsel","star","spatz","sperling","schwalbe","segler","rabe","krähe","dohle","häher","elster","falke","bussard","habicht","sperber","weihe","milan","taube","ente","gans","schwan","reiher","storch","kranich","möwe","taucher","säger","schnepfe","kiebitz","strandläufer","wasseramsel","stelze","pieper","lerche","ammer","zeisig","hänfling","gimpel","kernbeisser","kreuzschnabel","goldhähnchen","zaunkönig","rotkehlchen","rotschwanz","steinschmätzer","braunelle","kuckuck","wiedehopf","eisvogel","mauerläufer","baumläufer","kleiber","tannenhäher","alpendohle","steinhuhn","wachtel","fasan","rebhuhn","vogel","uhu","bartgeier","mönchsgeier","gänsegeier","schneefink","alpenbraunelle","bergpieper","ringdrossel","misteldrossel","wacholderdrossel","singdrossel","gartenrotschwanz","hausrotschwanz","trauerschnäpper","fliegenschnäpper","grasmücke","laubsänger","rohrsänger","schilfrohrsänger","pirol","neuntöter","raubwürger","bachstelze","kormoran","haubentaucher","blässhuhn","teichhuhn","wasserralle","lachmöwe","silbermöwe","flussuferläufer","waldschnepfe","bekassine","mäusebussard","turmfalke","wanderfalke","baumfalke","rotmilan","schwarzmilan","wespenbussard","fischadler","seeadler","zwergadler","schreiadler","raufusskauz","sperlingskauz","waldkauz","waldohreule","sumpfohreule","schleiereule","steinkauz"];
+function istVogel(l){for(var i=0;i<VOGEL.length;i++)if(l.indexOf(VOGEL[i])>=0)return true;return false}
+function stil(n){if(STY[n])return STY[n];var l=(n||"").toLowerCase();for(var i=0;i<KEYS.length;i++)if(l.indexOf(KEYS[i][0])>=0)return STY[KEYS[i][1]];return null}
+function stilTier(n){var s=STY[n];if(s)return s;var l=(n||"").toLowerCase();if(/(auer|birk|schnee|hasel|stein)huhn/.test(l))return STY["Schneehuhn"];if(l.indexOf("uhu")===0)return STY["Uhu"];if(l.indexOf("bartgeier")>=0)return STY["Bartgeier"];if(l.indexOf("steinadler")>=0)return STY["Steinadler"];return istVogel(l)?STY["Vogel"]:null}
+/* Schutzgebiete: weitere Ebenen hier ergänzen (wms + layers, oder wmts mit Layername) */
+var OVERLAYS=[{n:"Wildruhezonen",wms:"https://wfs.geodienste.ch/wildruhezonen_v2_1_1/deu?",layers:"wildruhezone,routennetz",a:"geodienste.ch / Kantone"},{n:"Eidg. Jagdbanngebiete",wmts:"ch.bafu.bundesinventare-jagdbanngebiete",a:"© BAFU"}];
+var ALTER=["Jungtier","Jährling","Adult","Unbekannt"],SEX=["♂","♀","?"],SEXN=["männlich","weiblich","unbekannt"],MON=["J","F","M","A","M","J","J","A","S","O","N","D"];
+var KEY="wildbeobachtung:v2",mode="b",editId=null,pt=[],zT=0,mem=[],gps=null,pin=null,pend=[],m1=null,m2=null,lay=null;
+var cnt=ALTER.map(function(){return [0,0,0]});
+function $(i){return document.getElementById(i)}
+function load(){try{var r=localStorage.getItem(KEY);return r?JSON.parse(r):mem}catch(e){return mem}}
+function store(d){mem=d;try{localStorage.setItem(KEY,JSON.stringify(d))}catch(e){}}
+function esc(s){var d=document.createElement("div");d.textContent=s==null?"":s;return d.innerHTML}
+function tot(c){return c.reduce(function(a,r){return a+r[0]+r[1]+r[2]},0)}
+function nowLocal(){var d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
+function opts(sel,list,first){sel.innerHTML=(first!=null?'<option value="">'+first+'</option>':"")+list.map(function(x){return '<option>'+esc(x)+'</option>'}).join("")}
+function fmt(t){var d=new Date(t);return isNaN(d)?t:d.toLocaleString("de-CH",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
+
+/* Fotos (IndexedDB) */
+function idb(){return new Promise(function(ok,no){var r=indexedDB.open("wb",1);r.onupgradeneeded=function(){r.result.createObjectStore("p")};r.onsuccess=function(){ok(r.result)};r.onerror=no})}
+function tx(mode,fn){return idb().then(function(db){return new Promise(function(ok,no){var t=db.transaction("p",mode),q=fn(t.objectStore("p"));t.oncomplete=function(){ok(q&&q.result)};t.onerror=no})})}
+function putPh(k,b){return tx("readwrite",function(s){return s.put(b,k)})}
+function getPh(k){return tx("readonly",function(s){return s.get(k)})}
+function delPh(k){return tx("readwrite",function(s){return s.delete(k)})}
+function shrink(f){return new Promise(function(ok,no){var im=new Image(),u=URL.createObjectURL(f);im.onload=function(){var s=Math.min(1,1400/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*s;c.height=im.height*s;c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(ok,"image/jpeg",.82)};im.onerror=no;im.src=u})}
+function exifTime(f){
+ return f.slice(0,262144).arrayBuffer().then(function(buf){
+  var v=new DataView(buf),o=2;
+  if(v.getUint16(0)!==0xFFD8)return null;
+  while(o<v.byteLength-10){
+   var mk=v.getUint16(o),len=v.getUint16(o+2);
+   if(mk===0xFFE1&&v.getUint32(o+4)===0x45786966){
+    var t=o+10,le=v.getUint16(t)===0x4949;
+    var g16=function(p){return v.getUint16(p,le)},g32=function(p){return v.getUint32(p,le)};
+    var find=function(ifd,tag){var n=g16(ifd);for(var i=0;i<n;i++){var e=ifd+2+i*12;if(g16(e)===tag)return e}return -1};
+    var e=find(t+g32(t+4),0x8769);if(e<0)return null;
+    var ex=t+g32(e+8),d=find(ex,0x9003);if(d<0)d=find(ex,0x9004);if(d<0)return null;
+    var p=t+g32(d+8),s="";for(var k=0;k<19;k++)s+=String.fromCharCode(v.getUint8(p+k));
+    var m=s.match(/^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d)/);
+    return m?m[1]+"-"+m[2]+"-"+m[3]+"T"+m[4]+":"+m[5]:null;
+   }
+   if((mk&0xFF00)!==0xFF00)break;
+   o+=2+len;
+  }
+  return null;
+ }).catch(function(){return null});
+}
+$("zeit").oninput=function(){zT=1};
+$("fotos").onchange=function(){
+ Array.prototype.forEach.call(this.files,function(f){
+  Promise.all([shrink(f),exifTime(f)]).then(function(r){
+   pend.push(r[0]);pt.push(r[1]);
+   renderThumbs();
+   if(r[1]&&!zT){$("zeit").value=r[1];zT=1;$("smsg").textContent="Aufnahmezeit aus dem Foto übernommen: "+fmt(r[1])}
+   else if(!r[1])$("smsg").textContent="In einem Foto wurde keine Aufnahmezeit gefunden."
+  })
+ });
+ this.value="";
+};
+
+/* Koordinaten */
+function lv95ToWgs(E,N){var y=(E-2600000)/1e6,x=(N-1200000)/1e6;
+ var lo=2.6779094+4.728982*y+0.791484*y*x+0.1306*y*x*x-0.0436*y*y*y;
+ var la=16.9023892+3.238272*x-0.270978*y*y-0.002528*x*x-0.0447*y*y*x-0.0140*x*x*x;
+ return [la*100/36,lo*100/36]}
+function wgsToLv95(la,lo){var p=(la*3600-169028.66)/10000,l=(lo*3600-26782.5)/10000;
+ return [2600072.37+211455.93*l-10938.51*l*p-0.36*l*p*p-44.54*l*l*l,1200147.07+308807.95*p+3745.25*l*l+76.63*p*p-194.56*l*l*p+119.79*p*p*p]}
+function fmtCH(n){return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,"'")}
+function parseKoord(t){
+ var s=String(t||"").replace(/['’´`]/g,""),n;
+ if(/[\/;]/.test(s))n=s.split(/[\/;]/).slice(0,2).map(function(q){return parseFloat(q.replace(/\s/g,"").replace(",","."))});
+ else n=(s.match(/\d+(?:\.\d+)?/g)||[]).slice(0,2).map(parseFloat);
+ if(n.length<2||isNaN(n[0])||isNaN(n[1]))return null;
+ var a=n[0],b=n[1],E,N;
+ function ok(la,lo){return la>=45.5&&la<=48&&lo>=5.5&&lo<=11}
+ if(ok(a,b))return [a,b];if(ok(b,a))return [b,a];
+ E=Math.max(a,b);N=Math.min(a,b);
+ if(E>2.4e6&&E<2.9e6&&N>1.0e6&&N<1.4e6)return lv95ToWgs(E,N);
+ if(E>4.8e5&&E<8.4e5&&N>6e4&&N<3e5)return lv95ToWgs(E+2e6,N+1e6);
+ return null}
+$("kgo").onclick=function(){
+ var r=parseKoord($("koord").value),m=$("gpsmsg");
+ if(!r){m.textContent="Koordinaten nicht erkannt. Beispiele: 46.3512, 9.6234 oder 2'761'000 / 1'138'000";return}
+ if(!m1){gps={lat:+r[0].toFixed(5),lon:+r[1].toFixed(5)};m.textContent="Standort: "+gps.lat+", "+gps.lon;return}
+ var ll=L.latLng(r[0],r[1]);setPin(ll);m1.setView(ll,16)};
+$("koord").onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();$("kgo").onclick()}};
+
+/* Karten */
+function mkMap(id){
+ var m=L.map(id,{center:[46.4,9.7],zoom:11});
+ var u="https://wmts.geo.admin.ch/1.0.0/",o={maxNativeZoom:18,maxZoom:19,attribution:"© swisstopo"};
+ var b={"Karte":L.tileLayer(u+"ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg",o),"Luftbild":L.tileLayer(u+"ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg",o)};
+ var ov={};OVERLAYS.forEach(function(o){ov[o.n]=o.wms?L.tileLayer.wms(o.wms,{layers:o.layers,format:"image/png",transparent:true,version:"1.3.0",opacity:.7,attribution:o.a||""}):L.tileLayer(u+o.wmts+"/default/current/3857/{z}/{x}/{y}.png",{maxNativeZoom:17,maxZoom:19,opacity:.65,attribution:o.a||""})});
+ b["Karte"].addTo(m);L.control.layers(b,ov).addTo(m);return m;
+}
+function setPin(ll){
+ gps={lat:+ll.lat.toFixed(5),lon:+ll.lng.toFixed(5)};
+ if(!pin){pin=L.marker(ll,{draggable:true,icon:L.divIcon({className:"pin",iconSize:[26,26],iconAnchor:[13,13]})}).addTo(m1);pin.on("dragend",function(){setPin(pin.getLatLng())})}else pin.setLatLng(ll);
+ var q=wgsToLv95(gps.lat,gps.lon);$("gpsmsg").textContent="Standort: "+gps.lat+", "+gps.lon+" · LV95 "+fmtCH(q[0])+" / "+fmtCH(q[1]);$("koord").value=gps.lat+", "+gps.lon;
+}
+$("gps").onclick=function(){
+ if(!navigator.geolocation){$("gpsmsg").textContent="Standort wird nicht unterstützt.";return}
+ $("gpsmsg").textContent="Standort wird gesucht …";
+ navigator.geolocation.getCurrentPosition(function(p){var ll=L.latLng(p.coords.latitude,p.coords.longitude);setPin(ll);m1.setView(ll,16)},function(){$("gpsmsg").textContent="Kein Standort verfügbar. Tippe stattdessen auf die Karte."},{enableHighAccuracy:true,timeout:15000});
+};
+function fmtD(t){var m=String(t).match(/^(\d{4})-(\d\d)-(\d\d)/);return m?m[3]+"."+m[2]+"."+m[1]:t}
+function when(x){return x.te?fmtD(x.t)+" – "+fmtD(x.te):fmt(x.t)}
+function inR(x,v,b){var s=x.t.slice(0,10),e=x.te||s;return(!v||e>=v)&&(!b||s<=b)}
+function hit(x,q){q=(q||"").trim().toLowerCase();return !q||[x.note,x.alt,x.region,x.art].join(" ").toLowerCase().indexOf(q)>=0}
+function icon(x){var e=x.k==="e",s=(e?stil(x.art):(stilTier(x.art)||stil(x.art)))||(e?["#868e96","📍"]:["#495057","🐾"]);return L.divIcon({className:"",iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-16],html:'<div class="mk'+(e?" ev":"")+'" style="background:'+s[0]+'"><span>'+s[1]+'</span>'+(e||tot(x.c)<2?"":"<b>"+tot(x.c)+"</b>")+'</div>'})}
+function drawMap2(){
+ if(typeof L==="undefined")return;
+ if(!m2)m2=mkMap("map2");
+ setTimeout(function(){m2.invalidateSize()},50);
+ if(lay)m2.removeLayer(lay);lay=L.featureGroup().addTo(m2);
+ var a=$("ka").value,n=0;
+ load().forEach(function(x){
+  if(!x.gps||(a&&x.art!==a)||!inR(x,$("kv").value,$("kb").value)||!hit(x,$("ks").value))return;
+  n++;
+  var mk=L.marker([x.gps.lat,x.gps.lon],{icon:icon(x)}).bindPopup("<b>"+(x.k==="e"?esc(x.art):tot(x.c)+" × "+esc(x.art))+"</b><br>"+when(x)+(x.region?"<br>"+esc(x.region):"")+(x.alt?"<br>Alter: "+esc(x.alt):"")+(x.note?"<br>"+esc(x.note):"")+(x.ph?'<div class="th pth" style="min-height:'+Math.ceil(x.ph/3)*70+'px"></div>':"")+'<button type="button" class="btn alt pedit" style="margin-top:8px;min-height:40px;font-size:.9rem">Bearbeiten</button>',{minWidth:230,maxWidth:260}).addTo(lay);
+  mk.on("popupopen",function(ev){popFill(ev.popup,x)});
+ });
+ $("kcount").textContent=n+" Punkte angezeigt";
+ if(lay.getLayers().length)m2.fitBounds(lay.getBounds().pad(.3),{maxZoom:15});
+}
+$("ka").onchange=$("kv").onchange=$("kb").onchange=drawMap2;$("ks").oninput=drawMap2;
+var lbU=[],lbI=0;
+function showLB(){$("lbi").src=lbU[lbI];$("lbp").hidden=$("lbn").hidden=lbU.length<2}
+function openLB(u,i){lbU=u;lbI=Math.max(0,i);showLB();$("lbox").hidden=false}
+$("lbx").onclick=function(e){e.stopPropagation();$("lbox").hidden=true};
+$("lbp").onclick=function(e){e.stopPropagation();lbI=(lbI+lbU.length-1)%lbU.length;showLB()};
+$("lbn").onclick=function(e){e.stopPropagation();lbI=(lbI+1)%lbU.length;showLB()};
+$("lbox").onclick=function(e){if(e.target.tagName!=="BUTTON")this.hidden=true};
+function popFill(pop,x){
+ var el=pop.getElement();if(!el)return;
+ var c=el.querySelector(".pth"),urls=[];
+ if(c&&x.ph){for(var n=0;n<x.ph;n++)(function(n){getPh(x.id+"_"+n).then(function(b){if(!b)return;var u=URL.createObjectURL(b);urls[n]=u;var i=new Image();i.src=u;i.onclick=function(){var l=urls.filter(Boolean);openLB(l,l.indexOf(u))};c.appendChild(i)})})(n)}
+ var eb=el.querySelector(".pedit");if(eb)eb.onclick=function(){m2.closePopup();startEdit(x.id)};
+}
+
+/* Tierarten */
+function arten(){var s={};load().forEach(function(x){if(x.k!=="e"&&ARTEN.indexOf(x.art)<0)s[x.art]=1});return ARTEN.concat(Object.keys(s).sort())}
+function evnames(){var s={};load().forEach(function(x){if(x.k==="e"&&EVENTS.indexOf(x.art)<0)s[x.art]=1});return EVENTS.concat(Object.keys(s).sort())}
+function names(){return mode==="e"?evnames():arten()}
+function alle(){return arten().concat(evnames())}
+function fillArt(v){
+ var sel=$("art");opts(sel,names());
+ sel.insertAdjacentHTML("beforeend",'<option value="__neu">'+(mode==="e"?"Andere Feststellung":"Andere Tierart")+' eintragen …</option>');
+ if(v)sel.value=v;
+ $("artneu").hidden=sel.value!=="__neu";
+}
+$("art").onchange=function(){var n=this.value==="__neu";$("artneu").hidden=!n;if(n)$("artneu").focus()};
+function setMode(m){mode=m;$("bmode").className=m==="b"?"btn":"btn alt";$("emode").className=m==="e"?"btn":"btn alt";$("blk-tier").hidden=m==="e";$("blk-bis").hidden=m!=="e";$("zlbl").textContent=m==="e"?"Datum und Uhrzeit (Beginn)":"Datum und Uhrzeit";$("artlbl").textContent=m==="e"?"Feststellung":"Tierart";$("artneu").placeholder=m==="e"?"z. B. Murmeltierbau":"Tierart eintragen, z. B. Buntspecht";$("artneu").value="";fillArt()}
+$("bmode").onclick=function(){setMode("b")};$("emode").onclick=function(){setMode("e")};
+
+/* Erfassen */
+function buildMatrix(id,p){id=id||"matrix";p=p||"c";
+ var h='<span></span>'+SEX.map(function(s,i){return '<span class="h" title="'+SEXN[i]+'">'+s+'</span>'}).join("");
+ ALTER.forEach(function(a,i){h+='<span>'+a+'</span>';for(var j=0;j<3;j++)h+='<div class="st"><button type="button" data-i="'+i+'" data-j="'+j+'" data-d="-1" aria-label="weniger">−</button><output id="'+p+i+j+'">0</output><button type="button" data-i="'+i+'" data-j="'+j+'" data-d="1" aria-label="mehr">+</button></div>'});
+ $(id).innerHTML=h;
+}
+$("matrix").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;var i=+b.dataset.i,j=+b.dataset.j;cnt[i][j]=Math.max(0,cnt[i][j]+ +b.dataset.d);showCnt()});
+function showCnt(){for(var i=0;i<4;i++)for(var j=0;j<3;j++)$("c"+i+j).textContent=cnt[i][j];$("tot").textContent="Gesamt: "+tot(cnt)}
+function regions(d){var s={};d.forEach(function(x){if(x.region)s[x.region]=1});return Object.keys(s).sort()}
+function refreshRegs(){$("regs").innerHTML=regions(load()).map(function(r){return '<option value="'+esc(r)+'">'}).join("")}
+function renderThumbs(){var t=$("thumbs");t.innerHTML="";pend.forEach(function(b,n){var i=new Image();i.src=URL.createObjectURL(b);i.title="Antippen zum Entfernen";i.onclick=function(){if(confirm("Dieses Foto entfernen?")){pend.splice(n,1);pt.splice(n,1);renderThumbs()}};t.appendChild(i)})}
+function resetForm(art,clearReg){
+ cnt=ALTER.map(function(){return [0,0,0]});gps=null;pend=[];pt=[];zT=0;renderThumbs();$("artneu").value="";fillArt(art);
+ if(pin&&m1){m1.removeLayer(pin);pin=null}
+ $("gpsmsg").textContent="";$("koord").value="";$("note").value="";$("alt").value="";$("bis").value="";if(clearReg)$("region").value="";$("zeit").value=nowLocal();showCnt();refreshRegs();
+}
+function exitEdit(){editId=null;$("editbar").hidden=true;$("modebar").hidden=false;$("save").textContent="Speichern"}
+$("save").onclick=function(){
+ var m=$("smsg"),art=$("art").value;if(mode==="b"&&tot(cnt)<1){m.textContent="Trage mindestens ein Tier ein.";return}
+ if(art==="__neu"){art=$("artneu").value.trim();if(!art){m.textContent="Trage die Tierart ein.";return}
+  var k=names().filter(function(a){return a.toLowerCase()===art.toLowerCase()})[0];art=k||art.charAt(0).toUpperCase()+art.slice(1)}
+ var t=$("zeit").value||nowLocal(),te=mode==="e"?$("bis").value:"";
+ if(te&&te<t.slice(0,10)){m.textContent="Das Enddatum liegt vor dem Beginn.";return}
+ var d=load(),ph=pend.length;
+ var rec={k:mode,t:t,te:te,art:art,region:$("region").value.trim(),gps:gps,c:cnt,alt:$("alt").value.trim(),note:$("note").value.trim(),ph:ph,pt:pt};
+ if(editId){
+  var idx=-1;d.forEach(function(x,i){if(x.id===editId)idx=i});
+  if(idx<0){m.textContent="Der Eintrag wurde nicht gefunden.";return}
+  var old=d[idx],eid=old.id,oldN=old.ph||0,nx={},q;
+  for(q in old)nx[q]=old[q];for(q in rec)nx[q]=rec[q];nx.k=old.k;d[idx]=nx;
+  Promise.all(pend.map(function(b,n){return putPh(eid+"_"+n,b)})).then(function(){var del=[];for(var n=ph;n<oldN;n++)del.push(delPh(eid+"_"+n));return Promise.all(del)}).then(function(){
+   store(d);exitEdit();setMode("b");resetForm(undefined,true);location.hash="#liste";
+  }).catch(function(){m.textContent="Speichern fehlgeschlagen."});
+  return;
+ }
+ var id=Date.now();rec.id=id;d.push(rec);
+ store(d);pend.forEach(function(b,n){putPh(id+"_"+n,b)});
+ m.textContent="Gespeichert: "+(mode==="e"?art:tot(cnt)+" × "+art)+(ph?" mit "+ph+" Foto(s)":"");
+ resetForm(art,false);
+};
+$("editcancel").onclick=function(){exitEdit();setMode("b");resetForm(undefined,true);location.hash="#liste"};
+function startEdit(id){
+ var x=load().filter(function(e){return String(e.id)===String(id)})[0];if(!x)return;
+ if(!editId&&(tot(cnt)>0||pend.length||$("note").value.trim())&&!confirm("Ungespeicherte Eingaben im Formular gehen verloren. Fortfahren?"))return;
+ editId=x.id;setMode(x.k==="e"?"e":"b");fillArt(x.art);
+ $("zeit").value=x.t;zT=1;$("region").value=x.region||"";$("bis").value=x.te||"";
+ cnt=JSON.parse(JSON.stringify(x.c));showCnt();$("alt").value=x.alt||"";$("note").value=x.note||"";
+ if(pin&&m1){m1.removeLayer(pin);pin=null}
+ gps=x.gps||null;$("koord").value="";$("gpsmsg").textContent="";
+ if(gps&&m1)setPin(L.latLng(gps.lat,gps.lon));
+ pend=[];pt=[];renderThumbs();
+ var n=x.ph||0,ps=[];for(var k=0;k<n;k++)ps.push(getPh(x.id+"_"+k));
+ Promise.all(ps).then(function(bs){bs.forEach(function(b,k){if(b){pend.push(b);pt.push((x.pt||[])[k]||null)}});renderThumbs()});
+ $("editbar").hidden=false;$("modebar").hidden=true;$("save").textContent="Änderungen speichern";$("smsg").textContent="";
+ if(location.hash==="#erfassen")route();else location.hash="#erfassen";
+ setTimeout(function(){if(m1){m1.invalidateSize();if(gps)m1.setView(L.latLng(gps.lat,gps.lon),16)}},150);
+}
+
+/* Liste */
+function renderList(){
+ var d=load().slice().sort(function(a,b){return a.t<b.t?1:-1}),fa=$("fa").value,fr=$("fr").value;
+ d=d.filter(function(x){return(!fa||x.art===fa)&&(!fr||x.region===fr)&&inR(x,$("lv").value,$("lb").value)&&hit(x,$("ls").value)});
+ $("lcount").textContent=d.length+" Einträge";
+ $("list").innerHTML=d.length?d.map(function(x){
+  var p=[];ALTER.forEach(function(a,i){var s=[];for(var j=0;j<3;j++)if(x.c[i][j])s.push(x.c[i][j]+" "+SEX[j]);if(s.length)p.push(a+": "+s.join(", "))});
+  return '<div class="row"><button data-id="'+x.id+'" data-ph="'+(x.ph||0)+'" aria-label="Eintrag löschen">Löschen</button><button data-edit="'+x.id+'" aria-label="Eintrag bearbeiten" style="color:var(--acc);margin-right:8px">Bearbeiten</button><b>'+(x.k==="e"?esc(x.art):tot(x.c)+' × '+esc(x.art))+'</b><small>'+when(x)+(x.region?' · '+esc(x.region):'')+'</small><small>'+esc(p.join(" | "))+'</small>'+(x.alt?'<small>Genaues Alter: '+esc(x.alt)+' Jahre</small>':'')+((x.pt||[]).filter(Boolean).length?'<small>Foto aufgenommen: '+x.pt.filter(Boolean).map(fmt).join(', ')+'</small>':'')+(x.gps?'<small>'+x.gps.lat+', '+x.gps.lon+' · LV95 '+fmtCH(wgsToLv95(x.gps.lat,x.gps.lon)[0])+' / '+fmtCH(wgsToLv95(x.gps.lat,x.gps.lon)[1])+'</small>':'')+(x.note?'<small>'+esc(x.note)+'</small>':'')+(x.ph?'<div class="th" data-id="'+x.id+'" data-ph="'+x.ph+'"></div>':'')+'</div>';
+ }).join(""):'<div class="empty">Noch keine Beobachtungen. Erfasse die erste im Reiter „Erfassen“.</div>';
+ document.querySelectorAll("#list .th").forEach(function(el){for(var n=0;n<+el.dataset.ph;n++)(function(n){getPh(el.dataset.id+"_"+n).then(function(b){if(b){var i=new Image();i.src=URL.createObjectURL(b);el.appendChild(i)}})})(n)});
+}
+$("list").addEventListener("click",function(e){
+ if(e.target.tagName==="IMG"){var im=[].slice.call(e.target.parentNode.querySelectorAll("img"));openLB(im.map(function(i){return i.src}),im.indexOf(e.target));return}
+ var b=e.target.closest("button");if(b&&b.dataset.edit){startEdit(b.dataset.edit);return}
+ if(!b||!confirm("Diesen Eintrag löschen?"))return;
+ for(var n=0;n<+b.dataset.ph;n++)delPh(b.dataset.id+"_"+n);
+ store(load().filter(function(x){return String(x.id)!==b.dataset.id}));renderList();
+});
+$("fa").onchange=$("fr").onchange=$("lv").onchange=$("lb").onchange=renderList;$("ls").oninput=renderList;
+
+/* Wildzählung */
+var ZK="wildbeobachtung:zaehlungen",ZA="wb:zaehl:aktiv",zmem=[],zam=null,zres=null;
+function loadZ(){try{var r=localStorage.getItem(ZK);return r?JSON.parse(r):zmem}catch(e){return zmem}}
+function storeZ(d){zmem=d;try{localStorage.setItem(ZK,JSON.stringify(d))}catch(e){}}
+function loadA(){try{var r=localStorage.getItem(ZA);return r?JSON.parse(r):zam}catch(e){return zam}}
+function storeA(a){zam=a;try{if(a)localStorage.setItem(ZA,JSON.stringify(a));else localStorage.removeItem(ZA)}catch(e){}}
+function zsums(c){var rows=c.map(function(r){return r[0]+r[1]+r[2]}),cols=[0,1,2].map(function(j){return c.reduce(function(a,r){return a+r[j]},0)});return{rows:rows,cols:cols,tot:rows.reduce(function(a,b){return a+b},0)}}
+function zTable(c){var s=zsums(c);return table(["Alter"].concat(SEX,["Total"]),ALTER.map(function(a,i){return [a].concat(c[i],["<b>"+s.rows[i]+"</b>"])}).concat([["<b>Total</b>"].concat(s.cols.map(function(v){return "<b>"+v+"</b>"}),["<b>"+s.tot+"</b>"])]))}
+function zText(z){var s=zsums(z.c),L=["Wildzählung "+z.art+(z.ort?", "+z.ort:"")+", "+fmtD(z.t)];ALTER.forEach(function(a,i){L.push(a+": "+s.rows[i]+" ("+SEX.map(function(x,j){return x+" "+z.c[i][j]}).join(" · ")+")")});L.push("Total: "+s.tot+" ("+SEX.map(function(x,j){return x+" "+s.cols[j]}).join(" · ")+")");if(z.note)L.push("Bemerkung: "+z.note);return L.join("\n")}
+function zUpdate(a){for(var i=0;i<4;i++)for(var j=0;j<3;j++)$("z"+i+j).textContent=a.c[i][j];$("ztot").textContent="Gesamt: "+tot(a.c);$("zsum").innerHTML=zTable(a.c)}
+function renderZ(){
+ var a=loadA(),Z=loadZ();
+ $("zarten").innerHTML=arten().map(function(r){return '<option value="'+esc(r)+'">'}).join("");
+ if(!$("zdat").value)$("zdat").value=nowLocal().slice(0,10);
+ $("z-run").hidden=!a;$("z-setup").hidden=!!a||!!zres;$("z-res").hidden=!!a||!zres;
+ if(a){$("zhead").innerHTML='<b>'+esc(a.art)+'</b><small>'+esc(a.ort||"(ohne Ort)")+' · '+fmtD(a.t)+'</small>';$("znote").value=a.note||"";zUpdate(a);return}
+ if(zres){var z=Z.filter(function(q){return q.id===zres})[0];if(!z){zres=null;return renderZ()}
+  $("zresbox").innerHTML='<h2>'+esc(z.art)+(z.ort?' · '+esc(z.ort):'')+'</h2><small style="color:var(--mut)">'+fmtD(z.t)+'</small>'+zTable(z.c)+(z.note?'<div class="msg">'+esc(z.note)+'</div>':'');$("zcm").textContent="";return}
+ Z=Z.slice().sort(function(a,b){return a.t===b.t?b.id-a.id:(a.t<b.t?1:-1)});
+ $("zlist").innerHTML=Z.length?Z.map(function(z){var s=zsums(z.c);return '<div class="row"><button data-zdel="'+z.id+'">Löschen</button><button data-zopen="'+z.id+'" style="color:var(--acc);margin-right:8px">Ergebnis</button><b>'+esc(z.art)+(z.ort?' · '+esc(z.ort):'')+'</b><small>'+fmtD(z.t)+' · Total '+s.tot+'</small><small>'+ALTER.map(function(a,i){return a+" "+s.rows[i]}).join(" · ")+'</small></div>'}).join(""):'<div class="empty">Noch keine Zählungen.</div>';
+}
+$("zstart").onclick=function(){
+ var art=$("zart").value.trim();if(!art){$("zmsg").textContent="Trage eine Tierart ein.";return}
+ var k=arten().filter(function(x){return x.toLowerCase()===art.toLowerCase()})[0];art=k||art.charAt(0).toUpperCase()+art.slice(1);
+ $("zmsg").textContent="";
+ storeA({id:Date.now(),art:art,ort:$("zort").value.trim(),t:$("zdat").value||nowLocal().slice(0,10),note:"",c:ALTER.map(function(){return [0,0,0]}),start:new Date().toISOString()});
+ zres=null;renderZ();
+};
+$("zmatrix").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;var a=loadA();if(!a)return;var i=+b.dataset.i,j=+b.dataset.j;a.c[i][j]=Math.max(0,a.c[i][j]+ +b.dataset.d);storeA(a);zUpdate(a)});
+$("znote").oninput=function(){var a=loadA();if(a){a.note=this.value;storeA(a)}};
+$("zend").onclick=function(){var a=loadA();if(!a)return;if(tot(a.c)<1&&!confirm("Es wurde noch nichts gezählt. Trotzdem beenden?"))return;a.note=$("znote").value.trim();a.end=new Date().toISOString();var Z=loadZ();Z.push(a);storeZ(Z);storeA(null);zres=a.id;renderZ();window.scrollTo(0,0)};
+$("zcancel").onclick=function(){if(confirm("Zählung verwerfen? Alle gezählten Tiere gehen verloren.")){storeA(null);zres=null;renderZ()}};
+$("zback").onclick=function(){zres=null;renderZ()};
+$("zcopy").onclick=function(){var z=loadZ().filter(function(q){return q.id===zres})[0];if(!z)return;var t=zText(z);try{navigator.clipboard.writeText(t).then(function(){$("zcm").textContent="Kopiert."},function(){$("zcm").textContent="Kopieren nicht möglich."})}catch(e){$("zcm").textContent="Kopieren nicht möglich."}};
+$("zlist").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;if(b.dataset.zopen){zres=+b.dataset.zopen;renderZ();window.scrollTo(0,0);return}if(b.dataset.zdel&&confirm("Diese Zählung löschen?")){storeZ(loadZ().filter(function(z){return String(z.id)!==b.dataset.zdel}));renderZ()}});
+Array.prototype.forEach.call(document.querySelectorAll(".clr"),function(b){b.onclick=function(){var ids=b.dataset.a.split(",");ids.forEach(function(i){$(i).value=""});$(ids[0]).dispatchEvent(new Event("change"))}});
+
+/* Auswertung */
+function table(h,rows){return '<table><tr>'+h.map(function(x){return '<th>'+x+'</th>'}).join("")+'</tr>'+rows.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+c+'</td>'}).join("")+'</tr>'}).join("")+'</table>'}
+function renderStats(){
+ var d=load(),sa=$("sa").value,sy=$("sy").value,sm=$("sm").value,sv=$("sv").value,sb=$("sb").value;
+ d=d.filter(function(x){if(x.k==="e"||(sa&&x.art!==sa))return false;var day=x.t.slice(0,10);if(sv||sb)return(!sv||day>=sv)&&(!sb||day<=sb);return(!sy||x.t.slice(0,4)===sy)&&(!sm||x.t.slice(5,7)===sm)});
+ var mo=new Array(12).fill(0),reg={},as=ALTER.map(function(){return [0,0,0]});
+ d.forEach(function(x){var m=+x.t.slice(5,7)-1,n=tot(x.c);if(m>=0&&m<12)mo[m]+=n;var r=x.region||"(ohne Region)";reg[r]=(reg[r]||0)+n;for(var i=0;i<4;i++)for(var j=0;j<3;j++)as[i][j]+=x.c[i][j]});
+ var mx=Math.max.apply(null,mo.concat(1));
+ $("bars").innerHTML=mo.map(function(v,i){return '<div style="height:'+(v/mx*100)+'%" title="'+MON[i]+': '+v+'"></div>'}).join("");
+ $("mo").innerHTML=MON.map(function(m){return '<span>'+m+'</span>'}).join("");
+ var rk=Object.keys(reg).sort(function(a,b){return reg[b]-reg[a]});
+ $("byreg").innerHTML=rk.length?table(["Region","Tiere"],rk.map(function(k){return [esc(k),reg[k]]})):'<div class="empty">Keine Daten für diese Auswahl.</div>';
+ $("byas").innerHTML=table(["Alter"].concat(SEX),as.map(function(r,i){return [ALTER[i]].concat(r)}));
+ var L2=["Datum;Tierart;Region;Breite;Länge;LV95 Ost;LV95 Nord;Alter;Geschlecht;Anzahl;Genaues Alter;Bemerkung;Foto aufgenommen"];
+ d.forEach(function(x){ALTER.forEach(function(a,i){for(var j=0;j<3;j++)if(x.c[i][j])L2.push([x.t,x.art,x.region,x.gps?x.gps.lat:"",x.gps?x.gps.lon:"",x.gps?Math.round(wgsToLv95(x.gps.lat,x.gps.lon)[0]):"",x.gps?Math.round(wgsToLv95(x.gps.lat,x.gps.lon)[1]):"",a,SEXN[j],x.c[i][j],(x.alt||"").replace(/;/g,","),(x.note||"").replace(/[;\n]/g," "),(x.pt||[]).filter(Boolean).join(" | ")].join(";"))})});
+ $("csv").value=L2.join("\n");
+}
+$("sa").onchange=$("sy").onchange=$("sm").onchange=$("sv").onchange=$("sb").onchange=renderStats;
+$("cp").onclick=function(){var t=$("csv");t.select();try{navigator.clipboard.writeText(t.value).then(function(){$("cmsg").textContent="Kopiert."},function(){$("cmsg").textContent="Text markiert. Bitte manuell kopieren."})}catch(e){$("cmsg").textContent="Text markiert. Bitte manuell kopieren."}};
+var bkFile=null;
+function toURL(b){return new Promise(function(ok){var r=new FileReader();r.onload=function(){ok(r.result)};r.readAsDataURL(b)})}
+function stamp(){try{return +localStorage.getItem("wb:lastbk")||0}catch(e){return 0}}
+function bkStatus(){
+ var t=stamp(),n=load().length+loadZ().length,days=t?Math.floor((Date.now()-t)/864e5):0,i=$("bkinfo");
+ i.textContent=(t?"Letzte Sicherung: "+new Date(t).toLocaleDateString("de-CH")+" (vor "+days+" Tagen)":"Noch keine Sicherung erstellt.")+" · "+n+" Einträge";
+ var b=$("bkbanner");
+ if(n>0&&(!t||days>=30)){b.hidden=false;b.innerHTML="<b>Sicherung fällig</b><small>"+(t?"Die letzte Sicherung ist "+days+" Tage alt. ":"Du hast noch nie gesichert. ")+'<a href="#auswertung" style="color:var(--acc)">Jetzt sichern</a></small>'}else b.hidden=true;
+ if(navigator.storage&&navigator.storage.persisted)navigator.storage.persisted().then(function(p){i.textContent+=" · Dauerhafter Speicher: "+(p?"ja":"nein")});
+}
+$("bk").onclick=function(){
+ var m=$("cmsg");m.textContent="Sicherung wird erstellt …";$("bkshare").hidden=true;
+ var d=load(),keys=[],ph={};d.forEach(function(x){for(var n=0;n<(x.ph||0);n++)keys.push(x.id+"_"+n)});
+ Promise.all(keys.map(function(k){return getPh(k).then(function(b){return b?toURL(b).then(function(u){ph[k]=u}):0})})).then(function(){
+  bkFile=new File([JSON.stringify({v:3,t:new Date().toISOString(),entries:d,counts:loadZ(),photos:ph})],"wildbeobachtung-sicherung-"+nowLocal().slice(0,10)+".json",{type:"application/json"});
+  $("bkshare").hidden=false;m.textContent="Fertig: "+d.length+" Einträge, "+loadZ().length+" Zählungen, "+keys.length+" Fotos ("+Math.round(bkFile.size/104857.6)/10+" MB). Tippe jetzt auf „Teilen / speichern“.";
+ }).catch(function(){m.textContent="Sicherung fehlgeschlagen."});
+};
+$("bkshare").onclick=function(){
+ if(!bkFile)return;
+ function done(){try{localStorage.setItem("wb:lastbk",String(Date.now()))}catch(e){}bkStatus();$("cmsg").textContent="Sicherung abgeschlossen. Prüfe, dass die Datei in iCloud Drive oder Dateien liegt."}
+ function dl(){var a=document.createElement("a");a.href=URL.createObjectURL(bkFile);a.download=bkFile.name;a.click();done()}
+ if(navigator.canShare&&navigator.canShare({files:[bkFile]}))navigator.share({files:[bkFile]}).then(done,function(e){if(e&&e.name!=="AbortError")dl()});else dl();
+};
+$("rs").onchange=function(){
+ var f=this.files[0],m=$("cmsg");this.value="";if(!f)return;
+ f.text().then(function(t){
+  var j=JSON.parse(t),en=Array.isArray(j)?j:j.entries,ph=j.photos||{},keys=Object.keys(ph),have={},haveZ={},zc=Array.isArray(j.counts)?j.counts:[];
+  if(!Array.isArray(en))throw 0;
+  load().forEach(function(x){have[x.id]=1});
+  var nw=en.filter(function(x){return !have[x.id]});loadZ().forEach(function(x){haveZ[x.id]=1});var nz=zc.filter(function(x){return !haveZ[x.id]});
+  if(!confirm(nw.length+" neue Einträge, "+nz.length+" Zählungen und "+keys.length+" Fotos einlesen? Vorhandene Einträge bleiben erhalten."))return;
+  return Promise.all(keys.map(function(k){return fetch(ph[k]).then(function(r){return r.blob()}).then(function(b){return putPh(k,b)})})).then(function(){store(load().concat(nw));storeZ(loadZ().concat(nz));m.textContent=nw.length+" Einträge und "+nz.length+" Zählungen wiederhergestellt.";refreshRegs();fillFilters();renderStats();bkStatus()});
+ }).catch(function(){m.textContent="Die Datei konnte nicht gelesen werden."});
+};
+
+/* Navigation */
+function fillFilters(){
+ var d=load(),v={fa:$("fa").value,fr:$("fr").value,sa:$("sa").value,ka:$("ka").value,sy:$("sy").value};
+ var AR=alle();opts($("fa"),AR,"Alles");opts($("fr"),regions(d),"Alle Regionen");opts($("sa"),arten(),"Alle Tierarten");opts($("ka"),AR,"Alles");
+ var ys={};ys[String(new Date().getFullYear())]=1;d.forEach(function(x){ys[x.t.slice(0,4)]=1});
+ opts($("sy"),Object.keys(ys).sort().reverse(),"Alle Jahre");
+ $("fa").value=v.fa;$("fr").value=v.fr;$("sa").value=v.sa;$("ka").value=v.ka;$("sy").value=v.sy||String(new Date().getFullYear());
+}
+function route(){
+ var V=["erfassen","karte","liste","zaehlung","auswertung"],v=(location.hash||"#erfassen").slice(1);if(V.indexOf(v)<0)v="erfassen";
+ V.forEach(function(n){$("v-"+n).hidden=n!==v});
+ document.querySelectorAll("nav a").forEach(function(a){a.className=a.dataset.v===v?"on":""});
+ fillFilters();
+ bkStatus();if(v==="erfassen"&&m1)setTimeout(function(){m1.invalidateSize()},50);
+ if(v==="karte"&&typeof L!=="undefined")drawMap2();
+ if(v==="liste")renderList();if(v==="zaehlung")renderZ();
+ if(v==="auswertung")renderStats();
+ window.scrollTo(0,0);
+}
+fillArt();buildMatrix();buildMatrix("zmatrix","z");showCnt();$("zeit").value=nowLocal();refreshRegs();
+if(typeof L!=="undefined"){m1=mkMap("map1");m1.on("click",function(e){setPin(e.latlng)})}
+else{$("map1").textContent="Karte nicht verfügbar. Beim ersten Start wird eine Internetverbindung benötigt.";$("gps").hidden=true}
+try{navigator.storage.persist()}catch(e){}
+window.addEventListener("hashchange",route);route();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});
+</script>
+</body>
+</html>
